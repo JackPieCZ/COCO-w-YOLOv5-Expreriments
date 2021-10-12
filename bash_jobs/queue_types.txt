@@ -1,0 +1,6 @@
+(yolov5) kolarj55@ptak:~/detector_improve_iopainting/bash_jobs$ qconf -sql
+deadline
+fastjobs
+offline
+superfastjobs
+weekend_jobs

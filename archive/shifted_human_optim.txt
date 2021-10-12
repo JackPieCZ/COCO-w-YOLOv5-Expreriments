@@ -1,0 +1,32 @@
+80 class
+10 instanci
+192 * 108 pozic
+* ((0.15 + 1) + (0.1+0.1))
+
+- zkonzistentnit ukladani a zprocesovavani dat mezi cpu a cudou
+- spustit na vice jadrovem pc nez tomto (2 jadra)
+- filtrovat data dle score uz ve scriptu z Yolo a ukladat tak minimalni mnozstvi
+dat do souboru, cimz se i zrychly jejich zpracovavani
+- zkontrolovat pristupovou rychlost a rychlost I/O zapisu na serveru
+- vycistit skripty yola a retinanetu od funkci ktere nepouzivame (nacitani webcam)
+- optimalizovat file management (slozka pro jpg, pt a json, popr npy) - jedna
+instance zabere 125G dat - vysledna numpy array 16,2 MB, soubor z yola az 5,1 MB,
+soubor z retiny jenom 8,5 KB
+- ? pouzit DataLoader pred procesovanim detekci v detektorech
+- ? pouzit nativni funkce z nampy misto for loopu ve for loopu (napr pri enlargovani)
+nebo rovnou zapisovat data do matrixu 10x10
+nebo vysledky jednoduse ukladat v 10x mensim metrixu
+- ? priprava datasetu - orezavani instanci, vyber pozadi
+- spocitat cas pro jednu instanci
+- ?cpython, decorators - https://towardsdatascience.com/numba-jit-compilation-but-for-python-373fc2f848d6,
+@cache
+
+
+- filtrovat skore z yola jeste pred ulozenim
+- lze pracovat bez souboru?
+- jedna pozice na vice objektu/jeden objekt na vice pozicich
+- vycistit skripty
+
+- plot nazev, jmena os, barvy nazev
+- bg z places
+- priprava datasetu - vyberem jenom nektere instance a tridy

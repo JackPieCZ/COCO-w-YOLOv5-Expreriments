@@ -1,0 +1,38 @@
+/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/thop/utils.py:1: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Iterable
+/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/torch/cuda/__init__.py:52: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 6050). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at  /pytorch/c10/cuda/CUDAFunctions.cpp:115.)
+  return torch._C._cuda_getDeviceCount() > 0
+[W NNPACK.cpp:79] Could not initialize NNPACK! Reason: Unsupported hardware.
+/datagrid/sge/default/spool/cmpgrid-73/job_scripts/1915733: line 6: 15943 Killed                  /home.stud/kolarj55/miniconda3/envs/yolov5/bin/python -u -Walways /home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py --job 0
+/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/thop/utils.py:1: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Iterable
+/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/torch/cuda/__init__.py:52: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 6050). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at  /pytorch/c10/cuda/CUDAFunctions.cpp:115.)
+  return torch._C._cuda_getDeviceCount() > 0
+[W NNPACK.cpp:79] Could not initialize NNPACK! Reason: Unsupported hardware.
+/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/thop/utils.py:1: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+  from collections import Iterable
+/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/torch/cuda/__init__.py:52: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 10010). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at  /pytorch/c10/cuda/CUDAFunctions.cpp:115.)
+  return torch._C._cuda_getDeviceCount() > 0
+[W NNPACK.cpp:79] Could not initialize NNPACK! Reason: Unsupported hardware.
+Traceback (most recent call last):
+  File "/home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py", line 435, in <module>
+    main(0, 'yolov5s.pt', 21, False)
+  File "/home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py", line 419, in main
+    check_category(categories[i], 'yolov5s.pt', 21, False)
+  File "/home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py", line 382, in check_category
+    plt.savefig(plot_path, dpi=600)
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/matplotlib/pyplot.py", line 966, in savefig
+    res = fig.savefig(*args, **kwargs)
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/matplotlib/figure.py", line 3015, in savefig
+    self.canvas.print_figure(fname, **kwargs)
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/matplotlib/backend_bases.py", line 2255, in print_figure
+    result = print_method(
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/matplotlib/backend_bases.py", line 1669, in wrapper
+    return func(*args, **kwargs)
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/matplotlib/backends/backend_agg.py", line 509, in print_png
+    mpl.image.imsave(
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/matplotlib/image.py", line 1616, in imsave
+    image.save(fname, **pil_kwargs)
+  File "/home.stud/kolarj55/miniconda3/envs/yolov5/lib/python3.9/site-packages/PIL/Image.py", line 2232, in save
+    fp = builtins.open(filename, "w+b")
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/home.stud/kolarj55/yolov5/bash_jobs/job_0/0_person_category_plot.png'

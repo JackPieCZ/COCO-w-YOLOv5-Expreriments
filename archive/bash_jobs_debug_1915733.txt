@@ -1,0 +1,46 @@
+(yolov5) kolarj55@ptak:~/detector_improve_iopainting/bash_jobs$ qacct -j 1915733
+==============================================================
+qname        superfastjobs
+hostname     cmpgrid-73
+group        users
+owner        kolarj55
+project      NONE
+department   defaultdepartment
+jobname      Coco_0
+jobnumber    1915733
+taskid       undefined
+account      sge
+priority     0
+qsub_time    Tue Sep 21 17:31:43 2021
+start_time   Tue Sep 21 17:08:31 2021
+end_time     Tue Sep 21 17:10:21 2021
+granted_pe   NONE
+slots        1
+failed       0
+exit_status  137                  (Killed)
+ru_wallclock 110s
+ru_utime     886.400s
+ru_stime     13.776s
+ru_maxrss    732.074KB
+ru_ixrss     0.000B
+ru_ismrss    0.000B
+ru_idrss     0.000B
+ru_isrss     0.000B
+ru_minflt    2402008
+ru_majflt    1
+ru_nswap     0
+ru_inblock   32392
+ru_oublock   504
+ru_msgsnd    0
+ru_msgrcv    0
+ru_nsignals  0
+ru_nvcsw     33223
+ru_nivcsw    243263
+cpu          900.176s
+mem          601.201GBs
+io           12.736GB
+iow          0.000s
+maxvmem      735.164MB
+arid         undefined
+ar_sub_time  undefined
+category     NONE
