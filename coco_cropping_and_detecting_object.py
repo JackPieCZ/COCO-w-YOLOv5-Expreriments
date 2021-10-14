@@ -36,7 +36,7 @@ def load_image(file_path):
     Returns numpy array
     """
     arr = np.asarray(Image.open(file_path), np.int16)
-    if arr.ndim == 2: # if the picture is in greyscale, convert to rgb
+    if arr.ndim == 2:  # if the picture is in greyscale, convert to rgb
         arr = np.stack([arr, arr, arr], axis=-1)
     return arr
 
@@ -80,7 +80,7 @@ def get_img_info(img_index, catId, imgsIdxs, show=False):
             bboxes.append([round(num) for num in i['bbox']])
 
     if bboxes:
-        img_path = os.path.join(imgDir, img['file_name'])
+        img_path = os.path.join(img_dir, img['file_name'])
         img_size = (img['width'], img['height'])
         img_id = img['id']
         if show:
@@ -264,7 +264,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         show_image(frame0, label='Frame 0', bbox=bbox)
 
     ### FROM SECOND FRAME TO MIDDLE FRAME ###
-    for i in range(1, num_steps):# // 2 + 1):
+    for i in range(1, num_steps):  # // 2 + 1):
         frame = np.zeros((bg_h, bg_w, 3), dtype=np.int16)
         start_pic = round(x + w - i * step)
         if start_pic < 0:
@@ -393,7 +393,7 @@ def detector_process(num_steps, step_detections, step_frames, step_bboxes, show=
                 step_detections[i] = [step_detections[i][det_ind]]
             det = step_detections[i][0]
 
-            x1, y1, x2, y2 = [int(num) for num in det[0:4]]
+            x1, y1, x2, y2 = [int(num) for num in det[:4]]
             bbox_pred = {'x1': x1, 'x2': x2, 'y1': y1, 'y2': y2}
             iou = bb_iou(bbox_pred, bbox_GT)
             posterior_prob = det[4]
@@ -405,7 +405,7 @@ def detector_process(num_steps, step_detections, step_frames, step_bboxes, show=
                                        bbox_pred['y2'] - bbox_pred['y1'], ec='blue', fill=False))
                 ax.add_patch(Rectangle((bbox_GT['x1'], bbox_GT['y1']), w, h, ec='red', fill=False))
                 plt.show()
-                if i == 0 or i == num_steps-1:
+                if i == 0 or i == num_steps - 1:
                     pass
 
         ious.append(iou)
@@ -419,7 +419,7 @@ def detector_process(num_steps, step_detections, step_frames, step_bboxes, show=
 def mean_step_values(lst, num_steps, filter_zeros):
     mean_results = []
     for i in range(num_steps):
-        if filter_zeros and i not in [0, num_steps-1]:
+        if filter_zeros and i not in [0, num_steps - 1]:
             filtered_lst = list(filter(lambda a: a != 0, lst[i]))
         else:
             filtered_lst = lst[i]
@@ -533,7 +533,7 @@ def check_category(cat, yolo_weights, num_steps, debug=False):
     ious_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
                                   f'{true_catId}_{cat}_category_plot_ious.txt')
     posterior_probs_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
-                                  f'{true_catId}_{cat}_category_plot_posterior_pros.txt')
+                                             f'{true_catId}_{cat}_category_plot_posterior_pros.txt')
     objectnesses_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
                                           f'{true_catId}_{cat}_category_plot_objectnesses.txt')
     correct_cat_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
@@ -580,17 +580,21 @@ if __name__ == '__main__':
     opt = parse_opt()
     mpl.use('module://backend_interagg')
 
-    annFile = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'annotations',
-                           'instances_val2017.json')
-    imgDir = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'val2017')
+    ann_file = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'annotations',
+                            'instances_val2017.json')
+    img_dir = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'val2017')
     target_dir = os.path.join('/', os.sep, 'mnt', 'home.stud', 'kolarj55', 'detector_improve_iopainting')
-    paths = [annFile, imgDir, target_dir]
+    models_dir = os.path.join(os.getcwd(), 'models')
+    paths = [ann_file, img_dir, target_dir, models_dir]
     for path in paths:
         if not os.path.exists(path):
-            print(f"{path} does not exist.")
-            exit(1)
+            if path == models_dir:
+                os.mkdir(models_dir)
+            else:
+                print(f"{path} does not exist.")
+                exit(1)
 
-    coco = COCO(annFile)
+    coco = COCO(ann_file)
     cats = coco.loadCats(coco.getCatIds())
     categories = [cat['name'] for cat in cats]
     supercategories = set([cat['supercategory'] for cat in cats])

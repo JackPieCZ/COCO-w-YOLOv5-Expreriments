@@ -600,7 +600,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     """Runs Non-Maximum Suppression (NMS) on inference results
 
     Returns:
-         list of detections, on (n,7) tensor per image [xyxy, cls_conf, cls, obj_conf]
+         list of detections, on (n,7) tensor per image [xyxy, cls_conf, obj_conf, cls]
     """
 
     nc = prediction.shape[2] - 5  # number of classes
