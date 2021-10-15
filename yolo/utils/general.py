@@ -600,7 +600,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     """Runs Non-Maximum Suppression (NMS) on inference results
 
     Returns:
-         list of detections, on (n,7) tensor per image [xyxy, cls_conf, obj_conf, cls]
+         list of detections, on (n,7) tensor per image [xyxy, cls_conf, cls]
     """
 
     nc = prediction.shape[2] - 5  # number of classes
@@ -649,12 +649,12 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
             i, j = (x[:, 5:] > conf_thres).nonzero(as_tuple=False).T
             x = torch.cat((box[i], x[i, j + 5, None], j[:, None].float()), 1)
         else:  # best class only
-            conf, j = x[:, 5:].max(1, keepdim=True)
-            obj_conf = x.clone().detach()[:, 4:5]
-            x = torch.cat((box, conf, obj_conf, j.float()), 1)[conf.view(-1) > conf_thres]
-        # Filter by class
-        if classes is not None:
-            x = x[(x[:, 6:7] == torch.tensor(classes, device=x.device)).any(1)]
+            conf_max, j = x[:, 5:].max(1, keepdim=True)
+            conf_cls = x[:, 5+classes:6+classes]
+            x = torch.cat((box, conf_max, conf_cls, j.float()), 1)[conf_max.view(-1) > conf_thres]
+        # # Filter by class
+        # if classes is not None:
+        #     x = x[(x[:, 6:7] == torch.tensor(classes, device=x.device)).any(1)]
 
         # Apply finite constraint
         # if not torch.isfinite(x).all():

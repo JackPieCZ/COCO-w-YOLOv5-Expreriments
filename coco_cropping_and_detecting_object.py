@@ -59,21 +59,21 @@ def show_image(array, label=None, bbox=None):
     plt.show()
 
 
-def get_img_info(img_index, catId, imgsIdxs, show=False):
+def get_img_info(img_index, cat_id, imgs_idxs, show=False):
     """
     Gets needed information for given image (id, filepath, size, bounding box)
     Args:
         img_index: image index
-        catId: category of given image
-        imgsIdxs: list of image indexes
+        cat_id: class of given image
+        imgs_idxs: list of image indexes
     Optional:
         show: show image with bounding box with matplotlib
     Returns image id, filepath, size, bounding box coordinates
     If the bounding box is smaller than 80px returns None
     """
-    img = coco.loadImgs(imgsIdxs[img_index])[0]
-    annIds = coco.getAnnIds(imgIds=img['id'], catIds=catId)
-    anns = coco.loadAnns(annIds)
+    img = coco.loadImgs(imgs_idxs[img_index])[0]
+    ann_ids = coco.getAnnIds(imgIds=img['id'], catIds=cat_id)
+    anns = coco.loadAnns(ann_ids)
     bboxes = []
     for i in anns:
         if max(i['bbox'][2], i['bbox'][3]) > 80:
@@ -144,6 +144,9 @@ def bb_iou(bb1, bb2):
     if x_right < x_left or y_bottom < y_top:
         return 0.0
 
+    # NOTE: We MUST ALWAYS add +1 to calculate area when working with
+    # picture coordinates, since 0,0 is the top left pixel, and w-1,h-1
+    # is the bottom right pixel. If we DON'T add +1, the result is wrong.
     intersection_area = (x_right - x_left) * (y_bottom - y_top)
 
     bb1_area = (bb1['x2'] - bb1['x1']) * (bb1['y2'] - bb1['y1'])
@@ -264,7 +267,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         show_image(frame0, label='Frame 0', bbox=bbox)
 
     ### FROM SECOND FRAME TO MIDDLE FRAME ###
-    for i in range(1, num_steps):  # // 2 + 1):
+    for i in range(1, num_steps):
         frame = np.zeros((bg_h, bg_w, 3), dtype=np.int16)
         start_pic = round(x + w - i * step)
         if start_pic < 0:
@@ -281,14 +284,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         frame[up_border_bg_start:down_border_bg_end, start_bg:end_bg, :] = img_array[
                                                                            up_border_pic_start:down_border_pic_end,
                                                                            start_pic:end_pic, :]
-        # end_bbox = round(i * step)
-        # if end_bbox < w:
-        #     start_bbox = 0
-        # elif end_bbox > bg_w:
-        #     end_bbox = bg_w
-        #     start_bbox = x - start_pic + start_bg
-        # else:
-        #     start_bbox = end_bbox - w
+
         start_bbox = x - start_pic + start_bg
         end_bbox = start_bbox + w
         if start_bbox < 0:
@@ -297,53 +293,18 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
             end_bbox = bg_w
         bbox = [start_bbox, border, end_bbox - start_bbox, bg_h - border * 2]
         used_bbox_size = bbox[2] * bbox[3]
-        percentage_of_bbox = used_bbox_size // (bbox_area / 100)
+        percentage_of_bbox = used_bbox_size / (bbox_area / 100)
         if i < (num_steps // 2 + 1):
-            bbox_size = (int(round(-100 + percentage_of_bbox, -1)))
+            bbox_size = round((-100 + int(percentage_of_bbox)), -1)
         else:
-            bbox_size = (int(round(100 - percentage_of_bbox, -1)))
+            bbox_size = round((100 - int(percentage_of_bbox)), -1)
         if i % img_step == 0 and show:
             show_image(frame, f'Frame {i}', bbox=bbox)
         if bbox_sizes[-1] != bbox_size:
             frames.append(frame)
             bboxes.append(bbox)
             bbox_sizes.append(bbox_size)
-        # else:
-        #     if i == (num_steps // 2):
-        #         frames.append(frame)
-        #         bboxes.append(bbox)
-        #         bbox_sizes.append(bbox_size)
-    # ### MIDDLE FRAME ###
-    #
-    # ### FROM MIDDLE TO LAST FRAME ###
-    # for i in range(num_steps // 2 + 1, num_steps):
-    #     frame = np.zeros((bg_h, bg_w, 3), dtype=np.int16)
-    #     start_pic = max(round(start_pic_0 - i * step), 0)
-    #     end_pic = min(img_size[0], round(x + w + bg_w - i * step))
-    #     start_bg = bg_w - (end_pic - start_pic)
-    #     end_bg = bg_w
-    #     if start_bg < 0:
-    #         end_pic += start_bg
-    #         start_bg = 0
-    #     frame[up_border_bg_start:down_border_bg_end, start_bg:end_bg, :] = img_array[
-    #                                                                        up_border_pic_start:down_border_pic_end,
-    #                                                                        start_pic:end_pic, :]
-    #     start_bbox = x - start_pic + start_bg
-    #     end_bbox = start_bbox + w
-    #     if end_bbox > bg_w:
-    #         end_bbox = bg_w
-    #     bbox = [start_bbox, border, end_bbox - start_bbox, bg_h - border * 2]
-    #     used_bbox_size = bbox[2] * bbox[3]
-    #     percentage_of_bbox = used_bbox_size / (bbox_area / 100)
-    #     bbox_size = (int(round(100 - percentage_of_bbox, -1)))
-    #     if i % img_step == 0 and show:
-    #         show_image(frame, f'Frame {i}', bbox=bbox)
-    #
-    #     if bbox_sizes[-1] != bbox_size:
-    #         frames.append(frame)
-    #         bboxes.append(bbox)
-    #         bbox_sizes.append(bbox_size)
-    #
+
     ### LAST FRAME ###
     frame21 = np.zeros((bg_h, bg_w, 3), dtype=np.int16)
     start_bg_20 = max(0, bg_w - x)
@@ -364,69 +325,85 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
     return frames, bboxes, bbox_sizes
 
 
-def detector_process(num_steps, step_detections, step_frames, step_bboxes, show=False, img_step=5):
+def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_cat_id, img_size, show=False,
+                     img_step=5):
     ious = []
-    posterior_probs = []
-    objectnesses = []
-    correct_cats = []
+    conf_maxs = []
+    conf_clses = []
+    correct_clses = []
+    iou_thres = 0.45
+
     for i in range(num_steps):
-        iou = 0
-        posterior_prob = 0
-        objectness = 0
-        correct_cat = False
+        iou = None
+        conf_max = None
+        conf_cls = None
+        correct_cls = False
+        valid_detections = []
 
-        if step_detections[i] != []:
-            x1, y1, w, h = step_bboxes[i]
-            bbox_GT = {'x1': x1, 'x2': x1 + w, 'y1': y1, 'y2': y1 + h}
-            correct_cat = True
+        x1, y1, w, h = step_bboxes[i]
+        bbox_GT = {'x1': x1, 'x2': x1 + w, 'y1': y1, 'y2': y1 + h}
 
-            if len(step_detections[i]) > 1:
+        for det in step_detections[i]:
+            x1, y1, x2, y2 = [int(num) for num in det[:4]]
+            bbox_pred = {'x1': x1, 'x2': x2, 'y1': y1, 'y2': y2}
+            temp_iou = bb_iou(bbox_pred, bbox_GT)
+            if temp_iou >= iou_thres:
+                valid_detections.append(det)
+
+        if valid_detections:
+            if len(valid_detections) > 1:
                 temp_iou = 0
-                det_ind = 0
-                for ind, det in enumerate(step_detections[i]):
+                det_ind = None
+                for ind, det in enumerate(valid_detections):
                     x1, y1, x2, y2 = [int(num) for num in det[:4]]
                     bbox_pred = {'x1': x1, 'x2': x2, 'y1': y1, 'y2': y2}
                     iou = bb_iou(bbox_pred, bbox_GT)
                     if iou > temp_iou:
                         temp_iou = iou
                         det_ind = ind
-                step_detections[i] = [step_detections[i][det_ind]]
-            det = step_detections[i][0]
+                valid_detections = [valid_detections[det_ind]]
+            det = valid_detections[0]
 
             x1, y1, x2, y2 = [int(num) for num in det[:4]]
             bbox_pred = {'x1': x1, 'x2': x2, 'y1': y1, 'y2': y2}
             iou = bb_iou(bbox_pred, bbox_GT)
-            posterior_prob = det[4]
-            objectness = det[5]
+            conf_max = det[4]
+            conf_cls = det[5]
+            correct_cls = int(det[6]) == true_cat_id
             if i % img_step == 0 and show:
                 ax = plt.subplot()
                 ax.imshow(step_frames[i])
                 ax.add_patch(Rectangle((bbox_pred['x1'], bbox_pred['y1']), bbox_pred['x2'] - bbox_pred['x1'],
                                        bbox_pred['y2'] - bbox_pred['y1'], ec='blue', fill=False))
                 ax.add_patch(Rectangle((bbox_GT['x1'], bbox_GT['y1']), w, h, ec='red', fill=False))
-                plt.show()
+                plt.title(f'IoU {iou}, class {int(det[6])}')
                 if i == 0 or i == num_steps - 1:
-                    pass
+                    continue
+                else:
+                    plt.show()
 
         ious.append(iou)
-        posterior_probs.append(posterior_prob)
-        objectnesses.append(objectness)
-        correct_cats.append(correct_cat)
+        conf_maxs.append(conf_max)
+        conf_clses.append(conf_cls)
+        correct_clses.append(correct_cls)
     plt.close('all')
-    return ious, posterior_probs, objectnesses, correct_cats
+    return ious, conf_maxs, conf_clses, correct_clses
 
 
-def mean_step_values(lst, num_steps, filter_zeros):
+def mean_step_values(lst, num_steps):
     mean_results = []
     for i in range(num_steps):
-        if filter_zeros and i not in [0, num_steps - 1]:
-            filtered_lst = list(filter(lambda a: a != 0, lst[i]))
+        if None in lst[i]:
+            filtered_lst = list(filter(None, lst[i]))
         else:
             filtered_lst = lst[i]
         if len(filtered_lst) > 0:
             mean_result = sum(filtered_lst) / len(filtered_lst)
         else:
-            mean_result = None
+            if i == 0 or i == num_steps - 1:
+                mean_result = 0
+            else:
+                mean_result = None
         mean_results.append(mean_result)
     return mean_results
 
@@ -438,30 +415,23 @@ def save_individual_plot_values(filepath, lst):
         f.close()
 
 
-def check_if_data(lists):
-    desc = ""
-    for lst in lists:
-        if lst == [None] * len(lst):
-            desc += ''
-
-
-def check_category(cat, yolo_weights, num_steps, debug=False):
-    catId = coco.getCatIds(catNms=[cat])
-    true_catId = categories.index(cat)
-    imgsIdxs = coco.getImgIds(catIds=catId)
-    print(f'Starting class {true_catId} - {cat}')
+def check_class(cat, yolo_weights, num_steps, debug=False):
+    cat_id = coco.getCatIds(catNms=[cat])
+    true_cat_id = classes.index(cat)
+    imgs_idxs = coco.getImgIds(catIds=cat_id)
+    print(f'Starting class {true_cat_id} - {cat}')
 
     used_imgs = 0
     x_ax_range = [i for i in range(-100, 101, 10)]
     x_ax_ious = [[] for _ in range(num_steps)]
-    x_ax_posterior_probs = [[] for _ in range(num_steps)]
-    x_ax_objectnesses = [[] for _ in range(num_steps)]
-    x_ax_correct_cats = [[] for _ in range(num_steps)]
+    x_ax_conf_max = [[] for _ in range(num_steps)]
+    x_ax_conf_cls = [[] for _ in range(num_steps)]
+    x_ax_correct_clses = [[] for _ in range(num_steps)]
     t1 = time.time()
 
-    for img_index in range(0, len(imgsIdxs)):
-        tprint(f'{img_index} / {len(imgsIdxs)} - images used {used_imgs}')
-        data = get_img_info(img_index, catId, imgsIdxs, show=debug)
+    for img_index in range(0, len(imgs_idxs)):
+        tprint(f'{img_index} / {len(imgs_idxs)} - images used {used_imgs}')
+        data = get_img_info(img_index, cat_id, imgs_idxs, show=debug)
         if data:
             img_id, img_path, img_size, bboxes = data
             img_array = load_image(img_path)
@@ -477,43 +447,41 @@ def check_category(cat, yolo_weights, num_steps, debug=False):
                     step_frames, step_bboxes, bbox_coverage = generate_step_frames(num_steps - 1, bbox, img_size,
                                                                                    img_array,
                                                                                    show=debug, img_step=1)
-                    step_detections = yolodetect(weights=yolo_weights, source=step_frames,
-                                                 classes=true_catId)  # , conf_thres=0.1, )
+                    step_detections = yolodetect(weights=yolo_weights, source=step_frames, classes=true_cat_id)
 
-                    ious, posterior_probs, objectnesses, correct_cats = detector_process(len(step_frames),
-                                                                                         step_detections, step_frames,
-                                                                                         step_bboxes, show=debug,
-                                                                                         img_step=1)
+                    ious, conf_maxs, conf_clses, correct_clses = detector_process(len(step_frames), step_detections,
+                                                                                  step_frames, step_bboxes, true_cat_id,
+                                                                                  img_size, show=debug, img_step=5)
 
                     for i in range(len(step_frames)):
                         slot = x_ax_range.index(bbox_coverage[i])
                         x_ax_ious[slot].append(ious[i])
-                        x_ax_posterior_probs[slot].append(posterior_probs[i])
-                        x_ax_objectnesses[slot].append(objectnesses[i])
-                        x_ax_correct_cats[slot].append(correct_cats[i])
+                        x_ax_conf_max[slot].append(conf_maxs[i])
+                        x_ax_conf_cls[slot].append(conf_clses[i])
+                        x_ax_correct_clses[slot].append(correct_clses[i])
                     used_imgs += 1
 
     additional_desc = ''
-    mean_ious = mean_step_values(x_ax_ious, num_steps, filter_zeros=True)
+    mean_ious = mean_step_values(x_ax_ious, num_steps)
     if mean_ious == [None] * len(mean_ious):
         additional_desc += 'IoU Data Not Available\n'
 
-    mean_posterior_probs = mean_step_values(x_ax_posterior_probs, num_steps, filter_zeros=True)
-    if mean_posterior_probs == [None] * len(mean_posterior_probs):
-        additional_desc += 'Posterior Probability Data Not Available\n'
+    mean_conf_max = mean_step_values(x_ax_conf_max, num_steps)
+    if mean_conf_max == [None] * len(mean_conf_max):
+        additional_desc += '~p(K|x) Max Data Not Available\n'
 
-    mean_objectnesses = mean_step_values(x_ax_objectnesses, num_steps, filter_zeros=True)
-    if mean_objectnesses == [None] * len(mean_objectnesses):
-        additional_desc += 'Objectness Data Not Available\n'
+    mean_conf_cls = mean_step_values(x_ax_conf_cls, num_steps)
+    if mean_conf_cls == [None] * len(mean_conf_cls):
+        additional_desc += '~p(K|x) Class Data Not Available\n'
 
-    mean_correct_cats = mean_step_values(x_ax_correct_cats, num_steps, filter_zeros=False)
+    mean_correct_clses = mean_step_values(x_ax_correct_clses, num_steps)
 
     ax = plt.subplot()
     possible_color_palette = ["1f77b4", "ff7f0e", "561d25", "aaf683", "941b0c"]
     ax.plot(x_ax_range, mean_ious, '-o', label='IoU')  # 1F77B4
-    ax.plot(x_ax_range, mean_posterior_probs, '-d', label='~p(K|x)')  # FF7F0E
-    ax.plot(x_ax_range, mean_objectnesses, '-h', label='Objectness')  # 2CA02C
-    ax.plot(x_ax_range, mean_correct_cats, '-D', label='Detection of Correct Class')  # D62728
+    ax.plot(x_ax_range, mean_conf_max, '-d', label='~p(K|x) Max')  # FF7F0E
+    ax.plot(x_ax_range, mean_conf_cls, '-h', label='~p(K|x) Class')  # 2CA02C
+    ax.plot(x_ax_range, mean_correct_clses, '-D', label='Detection of Correct Class')  # D62728
     plt.text(0.5, 0.5, additional_desc, horizontalalignment='center', verticalalignment='center',
              transform=ax.transAxes, alpha=0.3)
     plt.xlabel('% of the Picture Cropped Out')
@@ -527,30 +495,24 @@ def check_category(cat, yolo_weights, num_steps, debug=False):
     ax.yaxis.set_major_locator(loc_y)
     plt.legend(loc='best', fontsize='small')
     plt.grid()
-    plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
-                             f'{true_catId}_{cat}_category_plot.png')
-    plt.savefig(plot_path, dpi=600)
-    ious_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
-                                  f'{true_catId}_{cat}_category_plot_ious.txt')
-    posterior_probs_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
-                                             f'{true_catId}_{cat}_category_plot_posterior_pros.txt')
-    objectnesses_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
-                                          f'{true_catId}_{cat}_category_plot_objectnesses.txt')
-    correct_cat_plot_path = os.path.join(target_dir, 'bash_jobs', f'job_{true_catId}',
-                                         f'{true_catId}_{cat}_category_plot_correct_classes.txt')
-    save_individual_plot_values(ious_plot_path, mean_ious)
-    save_individual_plot_values(posterior_probs_plot_path, mean_posterior_probs)
-    save_individual_plot_values(objectnesses_plot_path, mean_objectnesses)
-    save_individual_plot_values(correct_cat_plot_path, mean_correct_cats)
+    plt.savefig(os.path.join(graphs_dir, f'{true_cat_id}_{cat}_class_plot.png'), dpi=300)
+    ious_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_ious.out')
+    conf_max_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_conf_max.out')
+    conf_cls_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_conf_cls.out')
+    correct_clses_dat_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_correct_clses.out')
+    save_individual_plot_values(ious_data_path, mean_ious)
+    save_individual_plot_values(conf_max_data_path, mean_conf_max)
+    save_individual_plot_values(conf_cls_data_path, mean_conf_cls)
+    save_individual_plot_values(correct_clses_dat_path, mean_correct_clses)
 
-    tprint(f'Category plot completed in {time.time() - t1}')
+    tprint(f'Class plot completed in {time.time() - t1}')
     plt.show()
     plt.close('all')
 
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--category', type=int, help="Coco's ID of the category to be processed")
+    parser.add_argument('--class', type=int, help="Coco's ID of the class to be processed")
     parser.add_argument('--num_steps', type=int, default=21, help='Number of steps/crops to make from the input image')
     parser.add_argument('--yolo_weights', type=str, default='yolov5s.pt',
                         help='Select YOLOv5 model file (e.g. yolov5s(6).pt, yolov5m(6).pt, yolov5l(6).pt,yolov5x(6).pt)')
@@ -559,21 +521,21 @@ def parse_opt():
     return opt
 
 
-def main(category=None,
+def main(class_id=None,
          num_steps=21,
          yolo_weights='yolov5s.pt',
          debug=False):
-    if category is not None:
-        assert 0 <= category <= 79
+    if class_id is not None:
+        assert 0 <= class_id <= 79
         assert num_steps >= 3
-        print(f'Executing category {category}')
-        check_category(categories[category],
-                       os.path.join(os.getcwd(), 'models', yolo_weights),
-                       num_steps, debug)
+        print(f'Executing class {class_id}')
+        check_class(classes[class_id],
+                    os.path.join(models_dir, yolo_weights),
+                    num_steps, debug)
     else:
-        print('No category assigned. Starting from category 0...')
+        print("No class assigned.\nRunning coco's class with indexs from 0 to 79")
         for i in range(0, 80):
-            check_category(categories[i], yolo_weights, num_steps, debug)
+            check_class(classes[i], os.path.join(models_dir, yolo_weights), num_steps, debug)
 
 
 if __name__ == '__main__':
@@ -583,21 +545,23 @@ if __name__ == '__main__':
     ann_file = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'annotations',
                             'instances_val2017.json')
     img_dir = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'val2017')
-    target_dir = os.path.join('/', os.sep, 'mnt', 'home.stud', 'kolarj55', 'detector_improve_iopainting')
-    models_dir = os.path.join(os.getcwd(), 'models')
-    paths = [ann_file, img_dir, target_dir, models_dir]
+    CWD = os.path.join(os.getcwd())
+    models_dir = os.path.join('/', os.sep, CWD, 'models')
+    graphs_dir = os.path.join('/', os.sep, CWD, 'graphs', 'without iopainting')
+    graphs_data_dir = os.path.join('/', os.sep, graphs_dir, 'graphs data')
+    paths = [ann_file, img_dir, CWD, models_dir, graphs_dir, graphs_data_dir]
     for path in paths:
         if not os.path.exists(path):
-            if path == models_dir:
-                os.mkdir(models_dir)
+            answ = input(f"'{path}' does not exist. Create? (y/n) ")
+            if answ == 'y':
+                os.makedirs(path)
             else:
-                print(f"{path} does not exist.")
                 exit(1)
 
     coco = COCO(ann_file)
     cats = coco.loadCats(coco.getCatIds())
-    categories = [cat['name'] for cat in cats]
-    supercategories = set([cat['supercategory'] for cat in cats])
+    classes = [cat['name'] for cat in cats]
+    superclasses = set([cat['supercategory'] for cat in cats])
 
     t0 = time.time()
     # main(**vars(opt))

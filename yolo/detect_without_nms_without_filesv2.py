@@ -161,9 +161,10 @@ def run(weights='yolov5s.pt',  # model.pt path(s)
         # NMS
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)[0]
         pred[:, :4] = scale_coords(img.shape[2:], pred[:, :4], im0s.shape).round()
-        results.append(pred.cpu().tolist())
+        response = pred.cpu().tolist()
+        results.append(response)
 
-    print(f'Yolov5 detection done!. ({time.time() - t0:.3f}s)')
+    # print(f'Yolov5 detection done!. ({time.time() - t0:.3f}s)')
     return results
 
 
