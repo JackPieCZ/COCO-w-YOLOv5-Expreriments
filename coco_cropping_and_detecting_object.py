@@ -2,6 +2,7 @@ import os
 import time
 import argparse
 import datetime
+import math
 
 import numpy as np
 import matplotlib as mpl
@@ -211,14 +212,13 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
 
     img_aspect_ratio = img_size[0] / img_size[1]
     x, y, w, h = bbox
-    bbox_area = w * h
     bbox_aspect_ratio = w / h
     frames = []
     bboxes = []
     bbox_sizes = []
     if img_aspect_ratio > bbox_aspect_ratio:
         bg_h = h
-        bg_w = round(img_size[0] / img_size[1] * h)
+        bg_w = math.ceil(img_size[0] / img_size[1] * h)
         rest_x = img_size[0] - x - w
         moving_pixels = bg_w + w
         step = moving_pixels / num_steps
@@ -229,7 +229,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         up_border_pic_start = y
         down_border_pic_end = y + h
     else:
-        bg_h = round(img_size[1] / img_size[0] * w)
+        bg_h = math.ceil(img_size[1] / img_size[0] * w)
         bg_w = w
         rest_x = img_size[0] - w - x
         rest_y = img_size[1] - h - y
@@ -266,10 +266,27 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
     if show:
         show_image(frame0, label='Frame 0', bbox=bbox)
 
-    ### FROM SECOND FRAME TO MIDDLE FRAME ###
-    for i in range(1, num_steps):
+    ### FROM SECOND FRAME TO ONE FROM LAST FRAME ###
+    crops = list(range(-90, 91, 190 // (num_steps - 1)))
+
+    for i, crop in enumerate(crops):
+        if crop < 0:
+            raw_shift = (w / 100 * (100+crop))
+            if crop <= -50:
+                shift = math.ceil(raw_shift)
+            else:
+                shift = round(raw_shift)
+        elif crop == 0:
+            shift = w
+        else:
+            raw_shift = (bg_w + (w / 100 * crop))
+            if crop <= 50:
+                shift = round(raw_shift)
+            else:
+                shift = math.floor(raw_shift)
+
         frame = np.zeros((bg_h, bg_w, 3), dtype=np.int16)
-        start_pic = round(x + w - i * step)
+        start_pic = x + w - shift
         if start_pic < 0:
             end_pic = bg_w + start_pic
             start_pic = 0
@@ -279,7 +296,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
             start_bg = 0
             end_bg = min(bg_w, end_pic - start_pic)
         else:
-            start_bg = abs(round(x + w - i * step))
+            start_bg = abs(x + w - shift)
             end_bg = min(bg_w, start_bg + end_pic)
         frame[up_border_bg_start:down_border_bg_end, start_bg:end_bg, :] = img_array[
                                                                            up_border_pic_start:down_border_pic_end,
@@ -292,14 +309,14 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         if end_bbox > bg_w:
             end_bbox = bg_w
         bbox = [start_bbox, border, end_bbox - start_bbox, bg_h - border * 2]
-        used_bbox_size = bbox[2] * bbox[3]
-        percentage_of_bbox = used_bbox_size / (bbox_area / 100)
-        if i < (num_steps // 2 + 1):
-            bbox_size = round((-100 + int(percentage_of_bbox)), -1)
+        percentage_of_bbox = bbox[2] * bbox[3] / (w * h / 100)
+        # print(percentage_of_bbox)
+        if (i+1) < (num_steps // 2 + 1):
+            bbox_size = round(-100 + int(percentage_of_bbox),-1)
         else:
-            bbox_size = round((100 - int(percentage_of_bbox)), -1)
-        if i % img_step == 0 and show:
-            show_image(frame, f'Frame {i}', bbox=bbox)
+            bbox_size = round(100 - int(percentage_of_bbox),-1)
+        if (i+1) % img_step == 0 and show:
+            show_image(frame, f'Frame {i+1}', bbox=bbox)
         if bbox_sizes[-1] != bbox_size:
             frames.append(frame)
             bboxes.append(bbox)
@@ -307,13 +324,13 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
 
     ### LAST FRAME ###
     frame21 = np.zeros((bg_h, bg_w, 3), dtype=np.int16)
-    start_bg_20 = max(0, bg_w - x)
-    end_bg_20 = bg_w
-    start_pic_20 = max(0, x - bg_w)
-    end_pic_20 = x
-    frame21[up_border_bg_start:down_border_bg_end, start_bg_20:end_bg_20, :] = img_array[
+    start_bg_21 = max(0, bg_w - x)
+    end_bg_21 = bg_w
+    start_pic_21 = max(0, x - bg_w)
+    end_pic_21 = x
+    frame21[up_border_bg_start:down_border_bg_end, start_bg_21:end_bg_21, :] = img_array[
                                                                                up_border_pic_start:down_border_pic_end,
-                                                                               start_pic_20:end_pic_20, :]
+                                                                               start_pic_21:end_pic_21, :]
     frames.append(frame21)
     bbox = [0, 0, 0, 0]
     bboxes.append(bbox)
@@ -325,8 +342,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
     return frames, bboxes, bbox_sizes
 
 
-def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_cat_id, img_size, show=False,
-                     img_step=5):
+def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_cat_id, show=False, img_step=5):
     ious = []
     conf_maxs = []
     conf_clses = []
@@ -392,6 +408,7 @@ def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_
 
 def mean_step_values(lst, num_steps):
     mean_results = []
+    num_results = []
     for i in range(num_steps):
         if None in lst[i]:
             filtered_lst = list(filter(None, lst[i]))
@@ -405,7 +422,8 @@ def mean_step_values(lst, num_steps):
             else:
                 mean_result = None
         mean_results.append(mean_result)
-    return mean_results
+        num_results.append(len(filtered_lst))
+    return mean_results, num_results
 
 
 def save_individual_plot_values(filepath, lst):
@@ -419,18 +437,19 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
     cat_id = coco.getCatIds(catNms=[cat])
     true_cat_id = classes.index(cat)
     imgs_idxs = coco.getImgIds(catIds=cat_id)
+    imgs_num = len(imgs_idxs)
     print(f'Starting class {true_cat_id} - {cat}')
 
     used_imgs = 0
-    x_ax_range = [i for i in range(-100, 101, 10)]
+    x_ax_range = [i for i in range(-100, 101, 200 // (num_steps - 1))]
     x_ax_ious = [[] for _ in range(num_steps)]
     x_ax_conf_max = [[] for _ in range(num_steps)]
     x_ax_conf_cls = [[] for _ in range(num_steps)]
     x_ax_correct_clses = [[] for _ in range(num_steps)]
     t1 = time.time()
 
-    for img_index in range(0, len(imgs_idxs)):
-        tprint(f'{img_index} / {len(imgs_idxs)} - images used {used_imgs}')
+    for img_index in range(0, imgs_num):
+        tprint(f'{img_index} / {imgs_num} - images used {used_imgs}')
         data = get_img_info(img_index, cat_id, imgs_idxs, show=debug)
         if data:
             img_id, img_path, img_size, bboxes = data
@@ -451,7 +470,7 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
 
                     ious, conf_maxs, conf_clses, correct_clses = detector_process(len(step_frames), step_detections,
                                                                                   step_frames, step_bboxes, true_cat_id,
-                                                                                  img_size, show=debug, img_step=5)
+                                                                                  show=debug, img_step=9)
 
                     for i in range(len(step_frames)):
                         slot = x_ax_range.index(bbox_coverage[i])
@@ -461,41 +480,44 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
                         x_ax_correct_clses[slot].append(correct_clses[i])
                     used_imgs += 1
 
+    tprint('Computing averages of data...')
     additional_desc = ''
-    mean_ious = mean_step_values(x_ax_ious, num_steps)
+    mean_ious, num_ious = mean_step_values(x_ax_ious, num_steps)
     if mean_ious == [None] * len(mean_ious):
         additional_desc += 'IoU Data Not Available\n'
 
-    mean_conf_max = mean_step_values(x_ax_conf_max, num_steps)
+    mean_conf_max, num_conf_max = mean_step_values(x_ax_conf_max, num_steps)
     if mean_conf_max == [None] * len(mean_conf_max):
         additional_desc += '~p(K|x) Max Data Not Available\n'
 
-    mean_conf_cls = mean_step_values(x_ax_conf_cls, num_steps)
+    mean_conf_cls, num_conf_cls = mean_step_values(x_ax_conf_cls, num_steps)
     if mean_conf_cls == [None] * len(mean_conf_cls):
         additional_desc += '~p(K|x) Class Data Not Available\n'
 
-    mean_correct_clses = mean_step_values(x_ax_correct_clses, num_steps)
+    mean_correct_clses, num_correct_clses = mean_step_values(x_ax_correct_clses, num_steps)
 
+    fig1 = plt.gcf()
     ax = plt.subplot()
     possible_color_palette = ["1f77b4", "ff7f0e", "561d25", "aaf683", "941b0c"]
     ax.plot(x_ax_range, mean_ious, '-o', label='IoU')  # 1F77B4
-    ax.plot(x_ax_range, mean_conf_max, '-d', label='~p(K|x) Max')  # FF7F0E
-    ax.plot(x_ax_range, mean_conf_cls, '-h', label='~p(K|x) Class')  # 2CA02C
+    ax.plot(x_ax_range, mean_conf_max, '-d', label='≈p(K|x) Max')  # FF7F0E
+    ax.plot(x_ax_range, mean_conf_cls, '-h', label='≈p(K|x) Class')  # 2CA02C
     ax.plot(x_ax_range, mean_correct_clses, '-D', label='Detection of Correct Class')  # D62728
     plt.text(0.5, 0.5, additional_desc, horizontalalignment='center', verticalalignment='center',
              transform=ax.transAxes, alpha=0.3)
     plt.xlabel('% of the Picture Cropped Out')
     plt.ylabel('Values')
-    plt.title(f'Average Detector Values of {used_imgs} {cat} Images')
+    plt.title(f'Average Detector Values of {used_imgs} {cat.title()} Images')
     plt.xlim([-100, 100])
     plt.ylim([0, 1])
     ax.xaxis.set_minor_locator(plticker.AutoMinorLocator())
-    ax.yaxis.set_minor_locator(plticker.AutoMinorLocator())
     loc_y = plticker.MultipleLocator(base=0.1)  # this locator puts ticks at regular intervals
     ax.yaxis.set_major_locator(loc_y)
     plt.legend(loc='best', fontsize='small')
     plt.grid()
-    plt.savefig(os.path.join(graphs_dir, f'{true_cat_id}_{cat}_class_plot.png'), dpi=300)
+    plt.show()
+    tprint('Saving data...')
+    fig1.savefig(os.path.join(graphs_dir, f'{true_cat_id}_{cat}_class_plot.png'), dpi=300)
     ious_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_ious.out')
     conf_max_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_conf_max.out')
     conf_cls_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_conf_cls.out')
@@ -504,10 +526,28 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
     save_individual_plot_values(conf_max_data_path, mean_conf_max)
     save_individual_plot_values(conf_cls_data_path, mean_conf_cls)
     save_individual_plot_values(correct_clses_dat_path, mean_correct_clses)
+    tprint('Creating second plot...')
+    create_num_detections_plot(num_conf_cls, cat, true_cat_id)
 
-    tprint(f'Class plot completed in {time.time() - t1}')
+    tprint(f'Class completed in {time.time() - t1}')
+
+def create_num_detections_plot(num_detections, cat, true_cat_id):
+    fig2 = plt.gcf()
+    ax = plt.subplot()
+    x_ax_range = [i for i in range(-100, 101, 10)]
+    ax.plot(x_ax_range, num_detections, '-o', color='#FFC300')
+    plt.xlabel('% of the Picture Cropped Out')
+    plt.ylabel('Number of Detections')
+    plt.title(f'Quantity of Detections for {cat.title()} Images')
+    plt.xlim([-100, 100])
+    plt.ylim(bottom=0)
+    ax.xaxis.set_minor_locator(plticker.AutoMinorLocator())
+    ax.yaxis.set_major_locator(plticker.MaxNLocator(integer=True))
+    plt.grid()
     plt.show()
-    plt.close('all')
+    fig2.savefig(os.path.join(graphs_dir, f'{true_cat_id}_{cat}_class_num_detections.png'), dpi=300)
+    num_detections_data_path = os.path.join(graphs_data_dir, f'{true_cat_id}_{cat}_class_data_num_detections.out')
+    save_individual_plot_values(num_detections_data_path, num_detections)
 
 
 def parse_opt():

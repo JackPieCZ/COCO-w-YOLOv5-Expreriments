@@ -3,8 +3,8 @@
 # #$ -N Coco_0
 # #$ -o /mnt/home.stud/kolarj55/detector_improve_iopainting/bash_jobs/job_0/sge.out
 # #$ -e /mnt/home.stud/kolarj55/detector_improve_iopainting/bash_jobs/job_0/sge.err
-# #$ -q fastjobs
-# /home.stud/kolarj55/miniconda3/envs/yolov5/bin/python -u -Walways /home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py --job 0
+# #$ -q offline
+# /home.stud/kolarj55/miniconda3/envs/yolov5/bin/python -u -Walways /home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py --class 0
 
 import os
 
@@ -24,5 +24,5 @@ for i in range(jobs_count):
         f.write(f'#$ -N Coco_{i}\n')
         f.write(f'#$ -o /mnt/home.stud/kolarj55/detector_improve_iopainting/bash_jobs/job_{i}/sge.out\n')
         f.write(f'#$ -e /mnt/home.stud/kolarj55/detector_improve_iopainting/bash_jobs/job_{i}/sge.err\n')
-        f.write('#$ -q fastjobs\n')
-        f.write(f'/home.stud/kolarj55/miniconda3/envs/yolov5/bin/python -u -Walways /home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py --job {i}')
+        f.write('#$ -q offline\n')
+        f.write(f'/home.stud/kolarj55/miniconda3/envs/yolov5/bin/python -u -Walways /home.stud/kolarj55/detector_improve_iopainting/coco_cropping_and_detecting_object.py --class {i}')

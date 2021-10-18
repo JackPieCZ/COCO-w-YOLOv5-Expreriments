@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalDependencies">
+    <plugin id="Pythonid" />
+    <plugin id="com.jetbrains.codeWithMe" />
+    <plugin id="com.markskelton.one-dark-theme" />
+    <plugin id="com.tabnine.TabNine" />
+    <plugin id="org.jetbrains.plugins.remote-run" />
+  </component>
+</project>
