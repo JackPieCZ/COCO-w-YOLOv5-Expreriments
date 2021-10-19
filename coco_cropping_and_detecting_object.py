@@ -543,6 +543,7 @@ def create_num_detections_plot(num_detections, cat, true_cat_id):
     plt.ylim(bottom=0)
     ax.xaxis.set_minor_locator(plticker.AutoMinorLocator())
     ax.yaxis.set_major_locator(plticker.MaxNLocator(integer=True))
+    ax.legend(['IoU(GT,D) > 0.45'], loc='best', fontsize='small')
     plt.grid()
     plt.show()
     fig2.savefig(os.path.join(graphs_dir, f'{true_cat_id}_{cat}_class_num_detections.png'), dpi=300)
