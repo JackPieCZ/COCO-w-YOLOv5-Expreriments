@@ -112,4 +112,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Project related files
 models/coco_resnet.pt
+graphs/
