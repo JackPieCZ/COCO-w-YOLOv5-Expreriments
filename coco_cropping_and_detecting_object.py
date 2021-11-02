@@ -42,24 +42,6 @@ def load_image(file_path):
     return arr
 
 
-def show_image(array, label=None, bbox=None):
-    """
-    Displays given array with matplotlib
-    Args:
-        array: numpy array
-    Optional:
-        label - label text above the image
-        bbox - shows rectangle of given bounding box
-    Returns None
-    """
-    ax = plt.subplot()
-    if bbox:
-        ax.add_patch(Rectangle((bbox[0], bbox[1]), bbox[2], bbox[3], fill=False, ec='red'))
-    ax.imshow(array)
-    ax.set_title(label)
-    plt.show()
-
-
 def get_img_info(img_index, cat_id, imgs_idxs, show=False):
     """
     Gets needed information for given image (id, filepath, size, bounding box)
@@ -91,7 +73,7 @@ def get_img_info(img_index, cat_id, imgs_idxs, show=False):
             I = load_image(img_path)
             ax.imshow(I)
             plt.show()
-        plt.close('all')
+            plt.close()
         return img_id, img_path, img_size, bboxes
     else:
         return
@@ -158,7 +140,8 @@ def bb_iou(bb1, bb2):
     return iou
 
 
-def show_safe_bboxes(bboxes, img_array, img_size):
+def show_safe_bboxes(bboxes, img_array, img_size, show=False, save_crops=False, save_crops_dir=None,
+                     save_bboxes_dir=None, img_index=None, true_cat_id=None):
     """
     Displays surrounding bounding boxes for given image
     Args:
@@ -174,11 +157,18 @@ def show_safe_bboxes(bboxes, img_array, img_size):
         left_safe_box = [max(x - desired_width, 0), y, x - max(x - desired_width, 0), h]
         right_safe_box = [x + w, y, min(desired_width, img_size[0] - (x + w)), h]
         ax.add_patch(
+            Rectangle((x, y), w, h, fill=False, ec='blue'))
+        ax.add_patch(
             Rectangle((left_safe_box[:2]), left_safe_box[2], left_safe_box[3], fill=False, ec='orange'))
         ax.add_patch(
             Rectangle((right_safe_box[:2]), right_safe_box[2], right_safe_box[3], fill=False, ec='yellow'))
-    plt.show()
-    plt.close('all')
+    if save_bboxes_dir:
+        plt.savefig(os.path.join(save_bboxes_dir, f'{true_cat_id}_safe_bboxes_{img_index}.png'))
+    if save_crops:
+        plt.savefig(os.path.join(save_crops_dir, 'save_bboxes.png'))
+    if show:
+        plt.show()
+    plt.close()
 
 
 def generate_safe_bboxes(bbox, img_size):
@@ -196,7 +186,7 @@ def generate_safe_bboxes(bbox, img_size):
     return left_safe_box, right_safe_box
 
 
-def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_step=5):
+def generate_step_frames(num_steps, bbox, img_size, img_array, img_step, save_crops_dir, show=False, save_crops=False):
     """
     Creates list of image arrays for differently cropped amounts (e.g. steps)
     Args:
@@ -204,6 +194,7 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         bbox: coordinates of bounding box in original image (x,y,w,h)
         img_size: size of original image (w,h)
         img_array: numpy array of original image
+        save_dir: path to save frames png files
     Optional:
         show: display the process in matplotlib
         img_step: how many steps should be skipped for displaying
@@ -220,8 +211,6 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         bg_h = h
         bg_w = math.ceil(img_size[0] / img_size[1] * h)
         rest_x = img_size[0] - x - w
-        moving_pixels = bg_w + w
-        step = moving_pixels / num_steps
         border = 0
 
         up_border_bg_start = 0
@@ -233,8 +222,6 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
         bg_w = w
         rest_x = img_size[0] - w - x
         rest_y = img_size[1] - h - y
-        moving_pixels = w * 2
-        step = moving_pixels / num_steps
         border = (bg_h - h) // 2
 
         if y > border:
@@ -263,15 +250,22 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
     bbox = [0, 0, 0, 0]
     bboxes.append(bbox)
     bbox_sizes.append(-100)
-    if show:
-        show_image(frame0, label='Frame 0', bbox=bbox)
+    if show or save_crops:
+        ax = plt.subplot()
+        ax.imshow(frame0)
+        ax.set_title('Frame 0')
+        if save_crops:
+            plt.savefig(os.path.join(save_crops_dir, f'frame{0}'))
+        if show:
+            plt.show()
+        plt.close()
 
     ### FROM SECOND FRAME TO ONE FROM LAST FRAME ###
     crops = list(range(-90, 91, 190 // (num_steps - 1)))
 
     for i, crop in enumerate(crops):
         if crop < 0:
-            raw_shift = (w / 100 * (100+crop))
+            raw_shift = (w / 100 * (100 + crop))
             if crop <= -50:
                 shift = math.ceil(raw_shift)
             else:
@@ -310,13 +304,23 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
             end_bbox = bg_w
         bbox = [start_bbox, border, end_bbox - start_bbox, bg_h - border * 2]
         percentage_of_bbox = bbox[2] * bbox[3] / (w * h / 100)
-        # print(percentage_of_bbox)
-        if (i+1) < (num_steps // 2 + 1):
-            bbox_size = round(-100 + int(percentage_of_bbox),-1)
+        if (i + 1) < (num_steps // 2 + 1):
+            bbox_size = round(-100 + int(percentage_of_bbox), -1)
         else:
-            bbox_size = round(100 - int(percentage_of_bbox),-1)
-        if (i+1) % img_step == 0 and show:
-            show_image(frame, f'Frame {i+1}', bbox=bbox)
+            bbox_size = round(100 - int(percentage_of_bbox), -1)
+        if show:
+            print(percentage_of_bbox)
+            print(f'{bbox_size=}')
+        if ((i + 1) % img_step == 0 and show) or save_crops:
+            ax = plt.subplot()
+            ax.add_patch(Rectangle((bbox[0], bbox[1]), bbox[2], bbox[3], fill=False, ec='red'))
+            ax.imshow(frame)
+            ax.set_title(f'Frame {i + 1}')
+            if save_crops:
+                plt.savefig(os.path.join(save_crops_dir, f'frame{i + 1}'))
+            if show:
+                plt.show()
+            plt.close()
         if bbox_sizes[-1] != bbox_size:
             frames.append(frame)
             bboxes.append(bbox)
@@ -335,14 +339,22 @@ def generate_step_frames(num_steps, bbox, img_size, img_array, show=False, img_s
     bbox = [0, 0, 0, 0]
     bboxes.append(bbox)
     bbox_sizes.append(100)
-    if show:
-        show_image(frame21, f'Frame {num_steps}', bbox=bbox)
+    if show or save_crops:
+        ax = plt.subplot()
+        ax.add_patch(Rectangle((bbox[0], bbox[1]), bbox[2], bbox[3], fill=False, ec='red'))
+        ax.imshow(frame21)
+        ax.set_title(f'Frame {num_steps}')
+        if save_crops:
+            plt.savefig(os.path.join(save_crops_dir, f'frame{num_steps}'))
+        if show:
+            plt.show()
+        plt.close()
 
-    plt.close('all')
     return frames, bboxes, bbox_sizes
 
 
-def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_cat_id, show=False, img_step=5):
+def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_cat_id, img_step, save_crops_dir,
+                     show=False, save_crops=False):
     ious = []
     conf_maxs = []
     conf_clses = []
@@ -386,23 +398,26 @@ def detector_process(num_steps, step_detections, step_frames, step_bboxes, true_
             conf_max = det[4]
             conf_cls = det[5]
             correct_cls = int(det[6]) == true_cat_id
-            if i % img_step == 0 and show:
+            if (i % img_step == 0 and show) or save_crops:
                 ax = plt.subplot()
                 ax.imshow(step_frames[i])
                 ax.add_patch(Rectangle((bbox_pred['x1'], bbox_pred['y1']), bbox_pred['x2'] - bbox_pred['x1'],
                                        bbox_pred['y2'] - bbox_pred['y1'], ec='blue', fill=False))
                 ax.add_patch(Rectangle((bbox_GT['x1'], bbox_GT['y1']), w, h, ec='red', fill=False))
                 plt.title(f'IoU {iou}, class {int(det[6])}')
-                if i == 0 or i == num_steps - 1:
-                    continue
-                else:
-                    plt.show()
+                if save_crops:
+                    plt.savefig(os.path.join(save_crops_dir, f'detection_frame{i}'))
+                if show:
+                    if i == 0 or i == num_steps - 1:
+                        continue
+                    else:
+                        plt.show()
+                plt.close()
 
         ious.append(iou)
         conf_maxs.append(conf_max)
         conf_clses.append(conf_cls)
         correct_clses.append(correct_cls)
-    plt.close('all')
     return ious, conf_maxs, conf_clses, correct_clses
 
 
@@ -433,12 +448,13 @@ def save_individual_plot_values(filepath, lst):
         f.close()
 
 
-def check_class(cat, yolo_weights, num_steps, debug=False):
+def check_class(cat, yolo_weights, num_steps, debug, save_crops, save_bboxes):
     cat_id = coco.getCatIds(catNms=[cat])
     true_cat_id = classes.index(cat)
     imgs_idxs = coco.getImgIds(catIds=cat_id)
     imgs_num = len(imgs_idxs)
     print(f'Starting class {true_cat_id} - {cat}')
+    class_dir = os.path.join(example_crops_dir, f'{true_cat_id}')
 
     used_imgs = 0
     x_ax_range = [i for i in range(-100, 101, 200 // (num_steps - 1))]
@@ -451,11 +467,14 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
     for img_index in range(0, imgs_num):
         tprint(f'{img_index} / {imgs_num} - images used {used_imgs}')
         data = get_img_info(img_index, cat_id, imgs_idxs, show=debug)
+        save_crops_dir = os.path.join(class_dir, f'{img_index}')
         if data:
             img_id, img_path, img_size, bboxes = data
             img_array = load_image(img_path)
-            if debug:
-                show_safe_bboxes(bboxes, img_array, img_size)
+            if debug or save_crops:
+                if not os.path.exists(save_crops_dir):
+                    os.makedirs(save_crops_dir)
+                show_safe_bboxes(bboxes, img_array, img_size, debug, save_crops, save_crops_dir)
 
             for bbox in bboxes:
                 left_safe_box, right_safe_box = generate_safe_bboxes(bbox, img_size)
@@ -463,14 +482,46 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
                 if sum(intersection(bbox, x) for x in bboxes_to_avoid) + sum(
                         intersection(left_safe_box, x) for x in bboxes_to_avoid) + sum(
                     intersection(right_safe_box, x) for x in bboxes_to_avoid) == 0.0:
-                    step_frames, step_bboxes, bbox_coverage = generate_step_frames(num_steps - 1, bbox, img_size,
-                                                                                   img_array,
-                                                                                   show=debug, img_step=1)
+
+                    generate_step_frames_args = {'num_steps': num_steps - 1,
+                                                 'bbox': bbox,
+                                                 'img_size': img_size,
+                                                 'img_array': img_array,
+                                                 'save_crops_dir': save_crops_dir,
+                                                 'img_step': 1,
+                                                 'show': debug,
+                                                 'save_crops': save_crops}
+                    step_frames, step_bboxes, bbox_coverage = generate_step_frames(**generate_step_frames_args)
+
                     step_detections = yolodetect(weights=yolo_weights, source=step_frames, classes=true_cat_id)
 
-                    ious, conf_maxs, conf_clses, correct_clses = detector_process(len(step_frames), step_detections,
-                                                                                  step_frames, step_bboxes, true_cat_id,
-                                                                                  show=debug, img_step=9)
+                    detector_process_args = {'num_steps': len(step_frames),
+                                             'step_detections': step_detections,
+                                             'step_frames': step_frames,
+                                             'step_bboxes': step_bboxes,
+                                             'true_cat_id': true_cat_id,
+                                             'img_step': 1,
+                                             'save_crops_dir': save_crops_dir,
+                                             'show': debug,
+                                             'save_crops': save_crops}
+                    ious, conf_maxs, conf_clses, correct_clses = detector_process(**detector_process_args)
+
+                    if save_bboxes:
+                        num_detections = sum([1 for i in conf_clses if i is not None])
+                        if sum(correct_clses) >= num_steps / 2:
+                            save_bboxes_dir = os.path.join(class_dir, 'high_detection')
+                        elif num_detections == 0:
+                            save_bboxes_dir = os.path.join(class_dir, 'no_detection')
+                        elif sum([1 for i in range(len(conf_clses)) if
+                                  (conf_clses[i] is not None and conf_clses[i] < conf_maxs[i])]) >= num_detections / 2:
+                            save_bboxes_dir = os.path.join(class_dir, 'wrong_detection')
+                        else:
+                            save_bboxes_dir = os.path.join(class_dir, 'low_detection')
+
+                        if not os.path.exists(save_bboxes_dir):
+                            os.makedirs(save_bboxes_dir)
+                        show_safe_bboxes(bboxes, img_array, img_size, save_bboxes_dir=save_bboxes_dir,
+                                         img_index=img_index, true_cat_id=true_cat_id)
 
                     for i in range(len(step_frames)):
                         slot = x_ax_range.index(bbox_coverage[i])
@@ -498,10 +549,10 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
 
     fig1 = plt.gcf()
     ax = plt.subplot()
-    possible_color_palette = ["1f77b4", "ff7f0e", "561d25", "aaf683", "941b0c"]
-    ax.plot(x_ax_range, mean_ious, '-o', label='IoU')  # 1F77B4
-    ax.plot(x_ax_range, mean_conf_max, '-d', label='≈p(K|x) Max')  # FF7F0E
-    ax.plot(x_ax_range, mean_conf_cls, '-h', label='≈p(K|x) Class')  # 2CA02C
+    # possible_color_palette = ["1f77b4", "ff7f0e", "561d25", "aaf683", "941b0c"]
+    ax.plot(x_ax_range, mean_ious, '-o', label='IoU (IoU(GT,D)>0.45)')  # 1F77B4
+    ax.plot(x_ax_range, mean_conf_max, '-d', label='≈p(K|x) Max (IoU(GT,D)>0.45)')  # FF7F0E
+    ax.plot(x_ax_range, mean_conf_cls, '-h', label='≈p(K|x) Class (IoU(GT,D)>0.45)')  # 2CA02C
     ax.plot(x_ax_range, mean_correct_clses, '-D', label='Detection of Correct Class')  # D62728
     plt.text(0.5, 0.5, additional_desc, horizontalalignment='center', verticalalignment='center',
              transform=ax.transAxes, alpha=0.3)
@@ -511,7 +562,7 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
     plt.xlim([-100, 100])
     plt.ylim([0, 1])
     ax.xaxis.set_minor_locator(plticker.AutoMinorLocator())
-    loc_y = plticker.MultipleLocator(base=0.1)  # this locator puts ticks at regular intervals
+    loc_y = plticker.MultipleLocator(base=0.1)
     ax.yaxis.set_major_locator(loc_y)
     plt.legend(loc='best', fontsize='small')
     plt.grid()
@@ -530,6 +581,8 @@ def check_class(cat, yolo_weights, num_steps, debug=False):
     create_num_detections_plot(num_conf_cls, cat, true_cat_id)
 
     tprint(f'Class completed in {time.time() - t1}')
+    plt.close('all')
+
 
 def create_num_detections_plot(num_detections, cat, true_cat_id):
     fig2 = plt.gcf()
@@ -543,7 +596,7 @@ def create_num_detections_plot(num_detections, cat, true_cat_id):
     plt.ylim(bottom=0)
     ax.xaxis.set_minor_locator(plticker.AutoMinorLocator())
     ax.yaxis.set_major_locator(plticker.MaxNLocator(integer=True))
-    ax.legend(['IoU(GT,D) > 0.45'], loc='best', fontsize='small')
+    ax.legend(['Detections (IoU(GT,D)>0.45)'], loc='best', fontsize='small')
     plt.grid()
     plt.show()
     fig2.savefig(os.path.join(graphs_dir, f'{true_cat_id}_{cat}_class_num_detections.png'), dpi=300)
@@ -565,18 +618,20 @@ def parse_opt():
 def main(class_id=None,
          num_steps=21,
          yolo_weights='yolov5s.pt',
-         debug=False):
+         debug=False,
+         save_crops=False,
+         save_bboxes=False):
     if class_id is not None:
         assert 0 <= class_id <= 79
         assert num_steps >= 3
         print(f'Executing class {class_id}')
         check_class(classes[class_id],
                     os.path.join(models_dir, yolo_weights),
-                    num_steps, debug)
+                    num_steps, debug, save_crops, save_bboxes)
     else:
-        print("No class assigned.\nRunning coco's class with indexs from 0 to 79")
+        print("No class assigned.\nRunning coco's class with index from 0 to 79")
         for i in range(0, 80):
-            check_class(classes[i], os.path.join(models_dir, yolo_weights), num_steps, debug)
+            check_class(classes[i], os.path.join(models_dir, yolo_weights), num_steps, debug, save_crops, save_bboxes)
 
 
 if __name__ == '__main__':
@@ -587,17 +642,14 @@ if __name__ == '__main__':
                             'instances_val2017.json')
     img_dir = os.path.join('/', os.sep, 'mnt', 'datagrid', 'public_datasets', 'COCO', 'val2017')
     CWD = os.path.join(os.getcwd())
-    models_dir = os.path.join('/', os.sep, CWD, 'models')
-    graphs_dir = os.path.join('/', os.sep, CWD, 'graphs', 'without iopainting')
-    graphs_data_dir = os.path.join('/', os.sep, graphs_dir, 'graphs data')
-    paths = [ann_file, img_dir, CWD, models_dir, graphs_dir, graphs_data_dir]
+    models_dir = os.path.join(CWD, 'models')
+    graphs_dir = os.path.join(CWD, 'graphs', 'without iopainting')
+    graphs_data_dir = os.path.join(graphs_dir, 'graphs data')
+    example_crops_dir = os.path.join(CWD, 'graphs', 'example_crops')
+    paths = [ann_file, img_dir, CWD, models_dir, graphs_dir, graphs_data_dir, example_crops_dir]
     for path in paths:
         if not os.path.exists(path):
-            answ = input(f"'{path}' does not exist. Create? (y/n) ")
-            if answ == 'y':
-                os.makedirs(path)
-            else:
-                exit(1)
+            os.makedirs(path)
 
     coco = COCO(ann_file)
     cats = coco.loadCats(coco.getCatIds())
